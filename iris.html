@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+	<meta name="description" content="">
+	<meta name="author" content="ryan.lee@sas.com">
+	<link rel="icon" href="css/favicon.ico">
+
+	<title>AI - MAS </title>
+	<link type="text/css" href="css/bootstrap.min.css?ver=4.1.1" rel="stylesheet">
+	<script type="text/javascript">
+		var version 		= 1.0,
+			http			= 'http://',
+			server			= '******',
+			port 			= ':8777',
+			token 			= '',
+			session 		= '',
+			username 		= '*****',
+            password		= '*****';
+	</script>
+</head>
+<body >
+	<header>
+		<nav class="navbar navbar-expand-md navbar-dark bg-dark">
+			<a class="navbar-brand" href="#"><img src="img/sas_logo.png" /></a>
+			<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+				<span class="navbar-toggler-icon"></span>
+			</button>
+			<div class="collapse navbar-collapse" id="navbarCollapse">
+				<ul class="navbar-nav mr-auto">
+					<li class="nav-item active">
+						<a class="nav-link" href="#">Deploying & Building AI Applications<span class="sr-only">(current)</span></a>
+					</li>
+					<li class="nav-item">
+						<a class="nav-link disabled" ></a>
+					</li>
+				</ul>
+			</div>
+			<div class="text-right" style="color:#fff;">
+				AI <br/>
+			</div>
+		</nav>
+	</header>
+	<main role="main" class="container">
+		<div class="accordion centered">
+			<h1 class="header">Which species?</h1>
+			<p>Please enter some parameters to classify.</p>
+			<div class="form-row">	
+				<div class="input-group">
+					<span class="input-group-text">Select Model:</span>
+					<div id="MM_Model"></div>
+				</div>
+			</div>
+			<hr>
+			<br>
+			<div>
+				<div class="form-row">
+					<label for="petallength">Petallength</label>
+					<div class="input-group">
+						
+						<input type="number" value="0" min="0" step="1000" data-number-to-fixed="3" data-number-stepfactor="100" class="form-control currency" id="petallength"/>
+					</div>
+				</div>
+				<br>
+				<div class="form-row">
+					<label for="petalwidth">Petalwidth</label>
+					<div class="input-group">
+						
+						<input type="number" value="0" min="0" step="10000" data-number-to-fixed="3" data-number-stepfactor="10000" class="form-control currency" id="petalwidth"/>
+					</div>
+				</div>
+				<br>
+				<div class="form-row">
+					<label for="sepallength">Sepallength</label>
+					<div class="input-group">
+						
+						<input type="number" value="0" min="0" step="50000" data-number-to-fixed="3" data-number-stepfactor="50000" class="form-control currency" id="sepallength"/>
+					</div>
+				</div>
+				<br>
+				<div class="form-row">
+					<label for="sepalwidth">Sepalwidth</label>
+					<div class="input-group">
+						<input type="number" value="0" min="0" step="1" data-number-to-fixed="3" data-number-stepfactor="100" class="form-control currency" id="sepalwidth"/>
+					</div>
+				</div>
+				<br>
+				<button class="btn btn-primary" id="btn" onclick="submitInput()">Calculate</button>
+				<img id="loading" style="height:70px;"/>
+			</div>
+		</div>
+	</main>
+	<div class="modal fade" id="modalPush">
+		<div class="modal-dialog" role="document">
+			<div class="modal-content">
+				<div class="modal-body">
+					<img id="image" style="height: 250px; width: 250px; display: block; margin: 0 auto;">
+					<div style="text-align: center;display: block;margin-top: 10px;font-size: 17px;">Based on the details entered, your species request will likely be</div>
+					<div id="resultMsg" style="text-align: center;display: block;font-size: 40px; margin: 5px;"></div>
+					<div style="text-align: center;display: block;margin-top: 10px;font-size: 17px;" id="resultDetails"></div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<footer class="footer">
+		<div class="container">
+			<span class="text-muted"></span>
+		</div>
+	</footer>
+	<script src="js/jquery.min.js?ver=3.3.1"></script>
+	<script src="js/jquery.cookie.min.js"></script>
+	<script src="js/angular.min.js?ver=1.6.5"></script>
+	<script src="js/bootstrap.min.js?ver=4.1.1"></script>
+	<script type="text/javascript">
+		var cas = {
+			login: function() {
+				if (!token) {
+					$.ajax({
+						url: http+server+'/SASLogon/oauth/token',
+						type: 'POST',
+						async: false,
+						timeout: 15000,
+						data: 'grant_type=password&username='+username+'&password='+password,
+						beforeSend: function(xhr) {
+							xhr.setRequestHeader('Authorization', '*****');
+						},
+						success: function(response) {
+							result = response;
+							token = response.access_token;
+						},
+						error: function(jqXHR, textStatus, errorThrown) {
+							if (textStatus === "timeout") {
+								console.log('api timed out!');
+							}
+						}
+					});
+				}
+			}
+		}
+		var mas = {
+			modules:function(){
+				$.ajax({
+					url: http+server+'/microanalyticScore/modules/',
+					type:'GET',
+					async: false,
+					timeout:15000,
+					data:'',      
+					beforeSend:function(xhr) {
+						xhr.setRequestHeader('Authorization', 'bearer '+token);
+						xhr.setRequestHeader('Content-Type', 'application/vnd.sas.models.model.summary');
+					},
+					success:function(api) {
+						console.log(api);
+						var x = api.items; 
+						var y = x.map(function(i){return [i.id,i.scope,i.links[0].href,i.links[0].type]});
+						var z = y.filter(e => e.find(a => e[1] == 'public'));
+						result = z;
+					},
+					error:function(jqXHR, textStatus, errorThrown) {
+						if (textStatus ==="timeout") {
+							console.log('api timed out!');
+						}
+					}
+				});
+			},
+			steps:function(moduleId){
+				$.ajax({
+					url: http+server+'/microanalyticScore/modules/'+moduleId+'/steps',
+					type:'GET',
+					async: false,
+					timeout:15000,
+					data:'',
+					beforeSend:function(xhr) {
+						xhr.setRequestHeader('Authorization', 'bearer '+token);
+						xhr.setRequestHeader('Content-Type', 'application/vnd.sas.microanalytic.module.step');
+					},
+					success:function(api) {
+						console.log(api);
+						var x = api.items; 
+						var y = x.map(function(i){return [i.moduleId,i.id,i.inputs]});
+						result = y[0][2];
+					},
+					error:function(jqXHR, textStatus, errorThrown) {
+						if (textStatus ==="timeout") {
+							console.log('api timed out!');
+						}
+					}
+				});
+			},
+			score:function(moduleId,param){
+				$.ajax({
+					url: http+server+'/microanalyticScore/modules/'+moduleId+'/steps/score',
+					type:'POST',
+					async: false,
+					timeout:15000,
+					data:param,
+					beforeSend:function(xhr) {
+						xhr.setRequestHeader('Authorization', 'bearer '+token);
+						xhr.setRequestHeader('Content-Type', 'application/vnd.sas.microanalytic.module.step.input+json');
+					},
+					success:function(api) {
+						console.log(api);
+						var x = api.outputs; 
+						var y = x.map(function(i){return [i.name,i.value]});
+						result = y;
+					},
+					error:function(jqXHR, textStatus, errorThrown) {
+						if (textStatus ==="timeout") {
+							console.log('api timed out!');
+						}
+					}
+				});
+			}
+		}
+	</script>
+	<script type="text/javascript">
+		var proc = {
+			login:function(){
+				cas.login();
+				mas.modules();
+				console.log(result);
+				dropdown 	= '<select id="mm_model_table" class="form-control">';
+				for(var i=0; i<result.length; i++) {
+					dropdown += '<option data-id="'+'" value="'+result[i][0]+'">'+result[i][0]+'</option>';
+				}
+				dropdown   += '</select>';
+				document.getElementById('MM_Model').innerHTML = dropdown;
+			},
+			model:function(data){
+				var model_name = $("#mm_model_table").val();
+				cas.login();
+				mas.score(model_name,data);
+				var imageURL;
+				var message;
+				var messageColor;
+				var extraMessage="";
+
+
+				if(result[0][1].trim() == "Setosa") { 
+					imageURL = "img/setosia.jpg";
+					message = "Setosa";
+					messageColor = "Orange";
+					extraMessage = "Setosa";
+				} else if(result[0][1].trim() == "Versicolor"){ 
+					imageURL = "img/versicolor.jpg";
+					message = "Versicolor";
+					messageColor = "Blue";
+					extraMessage = "Versicolor";
+				}	
+				else {
+					imageURL = "img/virginica.jpg";
+					message = "Virginica";
+					messageColor = "green";
+					extraMessage = "Virginica";
+				}
+				document.getElementById("image").src = imageURL;
+				document.getElementById("resultMsg").innerHTML = message;
+				document.getElementById("resultMsg").style.color = messageColor;
+				document.getElementById("resultDetails").innerHTML = extraMessage;
+				document.getElementById("btn").innerHTML = "Calculate";
+				document.getElementById("loading").style.display = "None";
+				$('#modalPush').modal();
+			}
+		}
+
+		function submitInput() {
+			document.getElementById("btn").innerHTML = "Calculating, please wait...";
+			var pl = $('#petallength').val() ;
+			var pw = $('#petalwidth').val() ;
+			var sl = $('#sepallength').val() ;
+			var sw = $('#sepalwidth').val() ;
+			var dataString = JSON.stringify({"inputs":[{"name":"petallength","value":+pw},{"name":"petalwidth","value":+pl},{"name":"sepallength","value":+sl},{"name":"sepalwidth","value":+sw}]});
+			var img = document.getElementById("loading");
+			img.src = 'img/loading.gif';
+			setTimeout(function() {
+				proc.model(dataString);
+			}, 1000);
+		}
+	</script>
+	<script type="text/javascript">proc.login();</script>
+</body>
+</html>
